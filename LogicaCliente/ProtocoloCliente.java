@@ -4,20 +4,13 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.math.BigInteger;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.Signature;
 import java.util.Base64;
 import java.util.Random;
-import java.security.PrivateKey;
-import java.security.InvalidKeyException;
-import javax.crypto.Cipher;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.BadPaddingException;
+
+import Criptografia.RSA;
 
 public class ProtocoloCliente {
   public static void procesar(BufferedReader stdIn, BufferedReader pIn, PrintWriter pOut, PublicKey publica,
@@ -27,7 +20,7 @@ public class ProtocoloCliente {
     pOut.println("SECINIT");
     // 2a. Cifrar R=C(K_w+, Reto)
     BigInteger reto = new BigInteger(128, new Random());
-    String R = encriptar(publica, reto);
+    String R = RSA.encriptar(publica, reto);
     // 2b. envia R
     if (R != null) {
       pOut.println(R);
@@ -42,7 +35,6 @@ public class ProtocoloCliente {
     }
     System.out.println(new BigInteger(fromServer).equals(reto));
     // 9. recibe y verifica DiffieHellman
-    
     String mensajeFirmado = pIn.readLine();
     String firmaBase64 = pIn.readLine(); 
 
@@ -64,6 +56,7 @@ public class ProtocoloCliente {
         BigInteger y = new BigInteger(P.bitLength() - 1, new SecureRandom()).add(BigInteger.ONE);
         BigInteger Gy = G.modPow(y, P);
         BigInteger claveSimetrica = Gx.modPow(y, P);
+        pOut.println(""+Gy);
 
       } else {
         pOut.println("ERROR");
@@ -72,20 +65,5 @@ public class ProtocoloCliente {
       e.printStackTrace();
     }
 
-  }
-
-  public static String encriptar(PublicKey publicKey, BigInteger reto) {
-    try {
-
-      byte[] bigIntBytes = reto.toByteArray();
-      Cipher cipher = Cipher.getInstance("RSA");
-      cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-      byte[] encriptados = cipher.doFinal(bigIntBytes);
-      return Base64.getEncoder().encodeToString(encriptados);
-    } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException
-        | BadPaddingException e) {
-      e.printStackTrace();
-      return null;
-    }
   }
 }

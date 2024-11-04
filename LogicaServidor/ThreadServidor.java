@@ -1,7 +1,6 @@
 package LogicaServidor;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
@@ -32,7 +31,7 @@ public class ThreadServidor extends Thread {
                escritor.close();
                lector.close();
                sktCliente.close();
-          } catch (IOException e) {
+          } catch (Exception e) {
                e.printStackTrace();
           }
      }
