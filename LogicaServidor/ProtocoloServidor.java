@@ -7,7 +7,6 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.Base64;
-
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import Criptografia.DiffieHellman;
@@ -21,13 +20,16 @@ public class ProtocoloServidor {
         ProtocoloServidor servidor = new ProtocoloServidor();
         int estado = 0;
         String inputLine;
+        long startTimeDiffieHellman = System.currentTimeMillis();
         BigInteger[] dhParameters = DiffieHellman.generarDiffieHellman();
         BigInteger P = dhParameters[0];
         BigInteger G = dhParameters[1];
         BigInteger x = new BigInteger(P.bitLength() - 1, new SecureRandom()).add(BigInteger.ONE);
         BigInteger Gx = G.modPow(x, P);
+        long endTimeDiffieHellman = System.currentTimeMillis();
+        System.out.println("El tiempo en generar G, P Y Gx fue:" + (endTimeDiffieHellman - startTimeDiffieHellman) + " milisegundos");
         BigInteger llaveSimetrica;
-        Boolean ejecutar=true;
+        Boolean ejecutar = true;
         SecretKeySpec claveCifrado;
         SecretKeySpec claveHMAC;
         IvParameterSpec iv;
@@ -36,7 +38,7 @@ public class ProtocoloServidor {
         int idPaquete;
         Boolean idPaqueteHMAC;
 
-        while (estado < 4 && (inputLine = pIn.readLine()) != null) {
+        while (estado < 5 && (inputLine = pIn.readLine()) != null) {
             switch (estado) {
                 case 0:
                     if (inputLine.equalsIgnoreCase("SECINIT")) {
@@ -61,25 +63,34 @@ public class ProtocoloServidor {
                     byte[] ivRaw = new byte[16];
                     secureRandom.nextBytes(ivRaw);
                     String ivBase64 = Base64.getEncoder().encodeToString(ivRaw);
-                    //Envia iv
+                    // Envia iv
                     pOut.println(ivBase64);
-                    iv=new IvParameterSpec(ivRaw);
-                    while(ejecutar){
-                        inputLine=pIn.readLine();
-                        if(!inputLine.equalsIgnoreCase("TERMINAR")){
-                            String[] parametros=inputLine.split(":ESTO ES UN SEPARADOR:");
-                            uid=Integer.parseInt(Simetricas.descifrar(parametros[0], claveCifrado, iv));
-                            uidHMAC= Simetricas.verificarHMAC(""+uid, parametros[1], claveHMAC);
-                            idPaquete=Integer.parseInt(Simetricas.descifrar(parametros[2], claveCifrado, iv));
-                            idPaqueteHMAC=Simetricas.verificarHMAC(""+idPaquete, parametros[3], claveHMAC);
-                            int estadoPaquete=Servidor.matriz[uid][idPaquete];
-                            //Respuesta
-                            String estadoPaqueteCifrado=Simetricas.cifrar(""+estadoPaquete, claveCifrado, iv);
-                            String estadoPaqueteHMAC=Simetricas.generarHMAC(""+estadoPaquete, claveHMAC);
-                            String respuesta= (estadoPaqueteCifrado+":ESTO ES UN SEPARADOR:"+estadoPaqueteHMAC);
+                    iv = new IvParameterSpec(ivRaw);
+                    long startTimeEjecuciones = System.currentTimeMillis();
+                    while (ejecutar) {
+                        long startTimeEjecucion = System.currentTimeMillis();
+                        inputLine = pIn.readLine();
+                        if (!inputLine.equalsIgnoreCase("TERMINAR")) {
+                            String[] parametros = inputLine.split(":ESTO ES UN SEPARADOR:");
+                            uid = Integer.parseInt(Simetricas.descifrar(parametros[0], claveCifrado, iv));
+                            uidHMAC = Simetricas.verificarHMAC("" + uid, parametros[1], claveHMAC);
+                            idPaquete = Integer.parseInt(Simetricas.descifrar(parametros[2], claveCifrado, iv));
+                            idPaqueteHMAC = Simetricas.verificarHMAC("" + idPaquete, parametros[3], claveHMAC);
+                            int estadoPaquete = Servidor.matriz[uid][idPaquete];
+                            System.out.println("El cliente: " + uid + " consulta el paquete: " + idPaquete
+                                    + " con estado: " + estadoPaquete);
+                            // Respuesta
+                            String estadoPaqueteCifrado = Simetricas.cifrar("" + estadoPaquete, claveCifrado, iv);
+                            String estadoPaqueteHMAC = Simetricas.generarHMAC("" + estadoPaquete, claveHMAC);
+                            String respuesta = (estadoPaqueteCifrado + ":ESTO ES UN SEPARADOR:" + estadoPaqueteHMAC);
                             pOut.println(respuesta);
-                        }else{
-                            ejecutar=false;
+                            long endTimeEjecucion = System.currentTimeMillis();
+                            System.out.println("El tiempo en atender la solicitud fue:" + (endTimeEjecucion - startTimeEjecucion) + " milisegundos");
+                        } else {
+                            System.out.println("El cliente termino sus peticiones");
+                            long endTimeEjecuciones = System.currentTimeMillis();
+                            System.out.println("El tiempo en atender todas las solicitudes:" + (endTimeEjecuciones - startTimeEjecuciones) + " milisegundos");
+                            ejecutar = false;
                         }
                     }
                     estado = 5;

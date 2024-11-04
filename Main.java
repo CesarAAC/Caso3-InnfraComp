@@ -1,5 +1,4 @@
 import java.util.Scanner;
-
 import Criptografia.Simetricas;
 import LogicaCliente.Cliente;
 import LogicaServidor.Servidor;
@@ -44,27 +43,27 @@ public class Main {
                             }
                         } else if (opcion2 == 2) {
                             System.out.println("Seleccione el numero de clientes");
-                            System.out.println("4 clientes");
-                            System.out.println("8 clientes");
-                            System.out.println("32 clientes");
-                            System.out.println("4. Salir");
+                            System.out.println("1.  4 clientes");
+                            System.out.println("2.  8 clientes");
+                            System.out.println("3.  32 clientes");
+                            System.out.println("4.  Salir");
 
                             if (scanner.hasNextInt()) {
                                 int numeroClientes = scanner.nextInt();
                                 scanner.nextLine();
-                                if (numeroClientes == 4) {
+                                if (numeroClientes == 1) {
                                     try {
                                         main.ejecutarClientes(4, llaves);
                                     } catch (IOException e) {
                                         e.printStackTrace();
                                     }
-                                } else if (numeroClientes == 8) {
+                                } else if (numeroClientes == 2) {
                                     try {
                                         main.ejecutarClientes(8, llaves);
                                     } catch (IOException e) {
                                         e.printStackTrace();
                                     }
-                                } else if (numeroClientes == 32) {
+                                } else if (numeroClientes == 3) {
                                     try {
                                         main.ejecutarClientes(32, llaves);
                                     } catch (IOException e) {
@@ -77,7 +76,6 @@ public class Main {
                                 }
                             } else {
                                 System.out.println("Por favor, ingrese un número válido.");
-                                scanner.nextLine();
                             }
                         } else if (opcion2 == 3) {
                             ejecutar2 = false;
@@ -115,12 +113,28 @@ public class Main {
             PublicKey publica=Simetricas.leerLlavePublica("Public" + llaves + ".txt");
             PrivateKey privada=Simetricas.leerLlavePrivada("LogicaServidor/Private" + llaves + ".txt");
             if (clientes == 1) {
-                Cliente.correrCliente(0, publica, 32);
                 ejecutarServidor(clientes, publica, privada);
+                Thread clienteThread=new Thread(()->{
+                    try{
+                        Cliente.correrCliente(0, publica, 32);
+                    }catch(Exception e){
+                        e.printStackTrace();
+                    }
+                });
+                clienteThread.start();
+                
             } else {
                 ejecutarServidor(clientes, publica, privada);
                 for (int i = 0; i < clientes; i++) {
-                    Cliente.correrCliente(i, publica, 1);
+                    int j=i;
+                    Thread clienteThread=new Thread(()->{
+                        try{
+                            Cliente.correrCliente(j, publica, 1);
+                        }catch(Exception e){
+                            e.printStackTrace();
+                        }
+                    });
+                    clienteThread.start();
                 }
             }
         } catch (Exception e) {

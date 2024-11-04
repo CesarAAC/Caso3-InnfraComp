@@ -12,6 +12,7 @@ import java.util.Random;
 
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import javax.swing.plaf.synth.SynthOptionPaneUI;
 
 import Criptografia.RSA;
 import Criptografia.Simetricas;
@@ -22,6 +23,7 @@ public class ProtocoloCliente {
     String fromServer;
     // 1. Envia "SECINIT"
     pOut.println("SECINIT");
+    long startTimeReto = System.currentTimeMillis();
     // 2a. Cifrar R=C(K_w+, Reto)
     BigInteger reto = new BigInteger(128, new Random());
     String R = RSA.encriptar(publica, reto);
@@ -29,40 +31,42 @@ public class ProtocoloCliente {
     if (R != null) {
       pOut.println(R);
     }
+    long endTimeReto = System.currentTimeMillis();
+    System.out.println("El tiempo en cumplir el Reto fue:" + (endTimeReto-startTimeReto)+" milisegundos");
     // 4. Recibe Rta
     fromServer = pIn.readLine();
-    // 5. Verifica Rta==reto
+    // 5. Verifica Rta==reto y Devuelve la respuesta correspondiente
     if (new BigInteger(fromServer).equals(reto)) {
       pOut.println("OK");
     } else {
       pOut.println("ERROR");
     }
-    System.out.println(new BigInteger(fromServer).equals(reto));
     // 9. recibe y verifica DiffieHellman
     String mensajeFirmado = pIn.readLine();
     String firmaBase64 = pIn.readLine();
-
     String[] valores = mensajeFirmado.split(":EstoEsUnSeparador:");
     BigInteger P = new BigInteger(valores[0]);
     BigInteger G = new BigInteger(valores[1]);
     BigInteger Gx = new BigInteger(valores[2]);
-
     byte[] firmaBytes = Base64.getDecoder().decode(firmaBase64);
-
     try {
       Signature signature = Signature.getInstance("SHA1withRSA");
       signature.initVerify(publica);
       signature.update(mensajeFirmado.getBytes());
       boolean firmaValida = signature.verify(firmaBytes);
-
+      // Verifica la firma y responde
       if (firmaValida) {
         pOut.println("OK");
-        BigInteger y = new BigInteger(P.bitLength() - 1, new SecureRandom()).add(BigInteger.ONE);
-        BigInteger Gy = G.modPow(y, P);
-        BigInteger claveSimetrica = Gx.modPow(y, P);
+        //Calcular la llave Simetrica junto con Gy
+        BigInteger[] claveSimetricaGy= calcularLlaveSimetrica(P, G, Gx);
+        BigInteger claveSimetrica= claveSimetricaGy[0];
+        BigInteger Gy=claveSimetricaGy[1];
+        //Hacer el Digest
         byte[] digest = Simetricas.generarDigest(claveSimetrica);
+        //Obtener las claes de cifrado y HMAC
         SecretKeySpec claveCifrado = Simetricas.obtenerClaveCifrado(digest);
         SecretKeySpec claveHMAC = Simetricas.obtenerClaveHMAC(digest);
+        //Enviar El Gy al servidor
         pOut.println("" + Gy);
         // Recibe iv
         IvParameterSpec iv = new IvParameterSpec(Base64.getDecoder().decode(pIn.readLine()));
@@ -72,13 +76,16 @@ public class ProtocoloCliente {
         // IdCliente HMAC
         String uidHMAC = Simetricas.generarHMAC(("" + idCliente), claveHMAC);
         if (peticiones == 1) {
+          System.out.println("El cliente "+ idCliente + " Acaba de hacer su peticion");
           hacerPeticion(pIn, pOut, idCliente, idCliente, claveCifrado, claveHMAC, iv, uidCifrado, uidHMAC);
         } else {
           for (int i = 0; i < peticiones; i++) {
+            System.out.println("Van "+i+" Peticiones de: "+peticiones);
             hacerPeticion(pIn, pOut, idCliente, i, claveCifrado, claveHMAC, iv, uidCifrado, uidHMAC);
           }
         }
         pOut.println("TERMINAR");
+        System.out.println("Soy el cliente: "+ idCliente+ " y quiero terminar");
       } else {
         pOut.println("ERROR");
       }
@@ -87,18 +94,22 @@ public class ProtocoloCliente {
     }
   }
 
-  private static void hacerPeticion(BufferedReader pIn, PrintWriter pOut, int idCliente, int IdPaquete,
-      SecretKeySpec claveCifrado, SecretKeySpec claveHMAC, IvParameterSpec iv, String uidCifrado,String uidHMAC) throws Exception {
+  private static void hacerPeticion(BufferedReader pIn, PrintWriter pOut, int idCliente, int idPaquete,
+      SecretKeySpec claveCifrado, SecretKeySpec claveHMAC, IvParameterSpec iv, String uidCifrado, String uidHMAC)
+      throws Exception {
     // IdPaquete Cifrado
-    String idPaqueteCifrado=Simetricas.cifrar(("" + IdPaquete), claveCifrado, iv);
+    String idPaqueteCifrado = Simetricas.cifrar(("" + idPaquete), claveCifrado, iv);
     // IdPaquete HMAC
-    String idPaqueteHMAC=Simetricas.generarHMAC(("" + IdPaquete), claveHMAC);
-    //Enviar la peticion
-    String peticion=(uidCifrado+":ESTO ES UN SEPARADOR:"+uidHMAC+":ESTO ES UN SEPARADOR:"+idPaqueteCifrado+":ESTO ES UN SEPARADOR:"+idPaqueteHMAC);
+    String idPaqueteHMAC = Simetricas.generarHMAC(("" + idPaquete), claveHMAC);
+    // Enviar la peticion
+    String peticion = (uidCifrado + ":ESTO ES UN SEPARADOR:" + uidHMAC + ":ESTO ES UN SEPARADOR:" + idPaqueteCifrado
+        + ":ESTO ES UN SEPARADOR:" + idPaqueteHMAC);
+    
     pOut.println(peticion);
-    //Recibir la respuesta;
-    String[] fromServer=pIn.readLine().split(":ESTO ES UN SEPARADOR:");
-    String estado=Simetricas.descifrar(fromServer[0], claveCifrado, iv);
+    // Recibir la respuesta;
+    String[] fromServer = pIn.readLine().split(":ESTO ES UN SEPARADOR:");
+    String estado = Simetricas.descifrar(fromServer[0], claveCifrado, iv);
+    System.out.println("El cliente: " +idCliente+ " consulta el paquete: "+ idPaquete+" y su estado es: "+estado);
     Boolean estadoHMAC = Simetricas.verificarHMAC(estado, fromServer[1], claveHMAC);
     int estadoNum = Integer.parseInt(estado);
 
@@ -117,5 +128,13 @@ public class ProtocoloCliente {
     } else if (estadoNum == 6) {
       System.out.println("El estado del paquete es: ENTREGADO");
     }
+  }
+
+  private static BigInteger[] calcularLlaveSimetrica(BigInteger P, BigInteger G, BigInteger Gx) {
+    BigInteger y = new BigInteger(P.bitLength() - 1, new SecureRandom()).add(BigInteger.ONE);
+    BigInteger Gy = G.modPow(y, P);
+    BigInteger claveSimetrica = Gx.modPow(y, P);
+    BigInteger[] respuesta= {claveSimetrica,Gy};
+    return respuesta;
   }
 }
