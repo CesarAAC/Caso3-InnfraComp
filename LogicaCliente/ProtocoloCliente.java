@@ -72,14 +72,10 @@ public class ProtocoloCliente {
         // IdCliente HMAC
         String uidHMAC = Simetricas.generarHMAC(("" + idCliente), claveHMAC);
         if (peticiones == 1) {
-          pOut.println(uidCifrado);
-          pOut.println(uidHMAC);
-          hacerPeticion(pIn, pOut, idCliente, idCliente, claveCifrado, claveHMAC, iv);
+          hacerPeticion(pIn, pOut, idCliente, idCliente, claveCifrado, claveHMAC, iv, uidCifrado, uidHMAC);
         } else {
           for (int i = 0; i < peticiones; i++) {
-            pOut.println(uidCifrado);
-            pOut.println(uidHMAC);
-            hacerPeticion(pIn, pOut, idCliente, i, claveCifrado, claveHMAC, iv);
+            hacerPeticion(pIn, pOut, idCliente, i, claveCifrado, claveHMAC, iv, uidCifrado, uidHMAC);
           }
         }
         pOut.println("TERMINAR");
@@ -92,14 +88,18 @@ public class ProtocoloCliente {
   }
 
   private static void hacerPeticion(BufferedReader pIn, PrintWriter pOut, int idCliente, int IdPaquete,
-      SecretKeySpec claveCifrado, SecretKeySpec claveHMAC, IvParameterSpec iv) throws Exception {
+      SecretKeySpec claveCifrado, SecretKeySpec claveHMAC, IvParameterSpec iv, String uidCifrado,String uidHMAC) throws Exception {
     // IdPaquete Cifrado
-    pOut.println(Simetricas.cifrar(("" + IdPaquete), claveCifrado, iv));
+    String idPaqueteCifrado=Simetricas.cifrar(("" + IdPaquete), claveCifrado, iv);
     // IdPaquete HMAC
-    pOut.println(Simetricas.generarHMAC(("" + IdPaquete), claveHMAC));
-
-    String estado = Simetricas.descifrar(pIn.readLine(), claveCifrado, iv);
-    Boolean estadoHMAC = Simetricas.verificarHMAC(estado, pIn.readLine(), claveHMAC);
+    String idPaqueteHMAC=Simetricas.generarHMAC(("" + IdPaquete), claveHMAC);
+    //Enviar la peticion
+    String peticion=(uidCifrado+":ESTO ES UN SEPARADOR:"+uidHMAC+":ESTO ES UN SEPARADOR:"+idPaqueteCifrado+":ESTO ES UN SEPARADOR:"+idPaqueteHMAC);
+    pOut.println(peticion);
+    //Recibir la respuesta;
+    String[] fromServer=pIn.readLine().split(":ESTO ES UN SEPARADOR:");
+    String estado=Simetricas.descifrar(fromServer[0], claveCifrado, iv);
+    Boolean estadoHMAC = Simetricas.verificarHMAC(estado, fromServer[1], claveHMAC);
     int estadoNum = Integer.parseInt(estado);
 
     if (estadoNum == 0) {

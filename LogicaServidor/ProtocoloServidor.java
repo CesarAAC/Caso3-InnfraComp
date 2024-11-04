@@ -67,13 +67,17 @@ public class ProtocoloServidor {
                     while(ejecutar){
                         inputLine=pIn.readLine();
                         if(!inputLine.equalsIgnoreCase("TERMINAR")){
-                            uid=Integer.parseInt(Simetricas.descifrar(inputLine, claveCifrado, iv));
-                            uidHMAC= Simetricas.verificarHMAC(""+uid, pIn.readLine(), claveHMAC);
-                            idPaquete=Integer.parseInt(Simetricas.descifrar(pIn.readLine(), claveCifrado, iv));
-                            idPaqueteHMAC=Simetricas.verificarHMAC(""+idPaquete, pIn.readLine(), claveHMAC);
+                            String[] parametros=inputLine.split(":ESTO ES UN SEPARADOR:");
+                            uid=Integer.parseInt(Simetricas.descifrar(parametros[0], claveCifrado, iv));
+                            uidHMAC= Simetricas.verificarHMAC(""+uid, parametros[1], claveHMAC);
+                            idPaquete=Integer.parseInt(Simetricas.descifrar(parametros[2], claveCifrado, iv));
+                            idPaqueteHMAC=Simetricas.verificarHMAC(""+idPaquete, parametros[3], claveHMAC);
                             int estadoPaquete=Servidor.matriz[uid][idPaquete];
-                            pOut.println(Simetricas.cifrar(""+estadoPaquete, claveCifrado, iv));
-                            pOut.println(Simetricas.generarHMAC(""+estadoPaquete, claveHMAC));
+                            //Respuesta
+                            String estadoPaqueteCifrado=Simetricas.cifrar(""+estadoPaquete, claveCifrado, iv);
+                            String estadoPaqueteHMAC=Simetricas.generarHMAC(""+estadoPaquete, claveHMAC);
+                            String respuesta= (estadoPaqueteCifrado+":ESTO ES UN SEPARADOR:"+estadoPaqueteHMAC);
+                            pOut.println(respuesta);
                         }else{
                             ejecutar=false;
                         }
