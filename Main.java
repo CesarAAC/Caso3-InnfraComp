@@ -115,12 +115,12 @@ public class Main {
             PublicKey publica=Simetricas.leerLlavePublica("Public" + llaves + ".txt");
             PrivateKey privada=Simetricas.leerLlavePrivada("LogicaServidor/Private" + llaves + ".txt");
             if (clientes == 1) {
-                Cliente.correrCliente(publica, 32);
+                Cliente.correrCliente(0, publica, 32);
                 ejecutarServidor(clientes, publica, privada);
             } else {
                 ejecutarServidor(clientes, publica, privada);
                 for (int i = 0; i < clientes; i++) {
-                    Cliente.correrCliente(publica, 1);
+                    Cliente.correrCliente(i, publica, 1);
                 }
             }
         } catch (Exception e) {

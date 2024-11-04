@@ -11,7 +11,7 @@ public class Cliente {
     public static final int PUERTO = 3400;
     public static final String SERVIDOR = "localhost";
 
-    public static void correrCliente(PublicKey publica, int peticiones) throws IOException {
+    public static void correrCliente(int idCliente, PublicKey publica, int peticiones) throws IOException {
         Socket socket = null;
         PrintWriter escritor = null;
         BufferedReader lector = null;
@@ -27,7 +27,7 @@ public class Cliente {
         }
 
         BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
-        ProtocoloCliente.procesar(stdIn, lector, escritor, publica, peticiones);
+        ProtocoloCliente.procesar(stdIn, lector, escritor, publica, peticiones, idCliente);
 
         escritor.close();
         lector.close();
