@@ -12,7 +12,6 @@ import java.util.Random;
 
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import javax.swing.plaf.synth.SynthOptionPaneUI;
 
 import Criptografia.RSA;
 import Criptografia.Simetricas;

@@ -80,12 +80,22 @@ public class ProtocoloServidor {
                             System.out.println("El cliente: " + uid + " consulta el paquete: " + idPaquete
                                     + " con estado: " + estadoPaquete);
                             // Respuesta
+                            long startTimeSimetrico = System.currentTimeMillis();
                             String estadoPaqueteCifrado = Simetricas.cifrar("" + estadoPaquete, claveCifrado, iv);
+                            long endTimeSimetrico = System.currentTimeMillis();
+                            System.out.println("El tiempo en cifrado Simetrico fue :" + (endTimeSimetrico - startTimeSimetrico) + " milisegundos");
+                            // No se manda pero se calcula:
+                            long startTimeAsimetrico = System.currentTimeMillis();
+                            RSA.encriptarString(publica, ""+estadoPaquete);
+                            long endTimAsimetrico = System.currentTimeMillis();
+                            System.out.println("El tiempo en cifrado Asimetrico fue :" + (endTimAsimetrico - startTimeAsimetrico) + " milisegundos");
+
                             String estadoPaqueteHMAC = Simetricas.generarHMAC("" + estadoPaquete, claveHMAC);
                             String respuesta = (estadoPaqueteCifrado + ":ESTO ES UN SEPARADOR:" + estadoPaqueteHMAC);
-                            pOut.println(respuesta);
                             long endTimeEjecucion = System.currentTimeMillis();
-                            System.out.println("El tiempo en atender la solicitud fue:" + (endTimeEjecucion - startTimeEjecucion) + " milisegundos");
+                            System.out.println("El tiempo en atender la solicitud fue:" + ((endTimeEjecucion - startTimeEjecucion)-(endTimAsimetrico - startTimeAsimetrico)) + " milisegundos");
+                            pOut.println(respuesta);
+                            
                         } else {
                             System.out.println("El cliente termino sus peticiones");
                             long endTimeEjecuciones = System.currentTimeMillis();

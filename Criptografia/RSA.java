@@ -36,6 +36,22 @@ public class RSA {
       return null;
     }
   }
+  public static String encriptarString(PublicKey publicKey, String mensaje) {
+    try {
+        byte[] mensajeBytes = mensaje.getBytes("UTF-8");
+
+        Cipher cipher = Cipher.getInstance("RSA");
+        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+
+        byte[] encriptados = cipher.doFinal(mensajeBytes);
+
+        return Base64.getEncoder().encodeToString(encriptados);
+    } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException
+            | BadPaddingException | java.io.UnsupportedEncodingException e) {
+        e.printStackTrace();
+        return null;
+    }
+}
 
     public static BigInteger desencriptar(String encryptedData, PrivateKey privateKey) throws Exception {
         // Decodificar el texto encriptado desde Base64
